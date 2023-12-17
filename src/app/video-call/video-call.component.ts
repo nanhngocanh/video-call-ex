@@ -1,5 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
-import { Peer, PeerJSOption } from "peerjs";
+import { DataConnection, Peer, PeerJSOption } from "peerjs";
 import { v4 as uuidv4 } from "uuid";
 
 @Component({
@@ -14,6 +14,10 @@ export class VideoCallComponent implements OnInit {
   lazyStream: any;
   currentPeer: any;
   peerList: any[] = [];
+
+  messages: any[] = [];
+  message: any = "";
+  conn!: DataConnection;
 
   @ViewChild("remoteVideo", { static: true }) remoteVideo!: ElementRef;
 
@@ -47,9 +51,16 @@ export class VideoCallComponent implements OnInit {
         console.error(error);
       }
     }
-    // this.peer.on("open", (id) => {
-    //   this.peerId = id;
-    // });
+
+    this.peer.on("connection", (NAconn: any) => {
+      this.conn = NAconn;
+      this.conn.on("data", (message) =>
+        this.messages.push({
+          message: message,
+          type: "receive",
+        })
+      );
+    });
 
     // Peer event to accept incoming calls
     this.peer.on("call", (call) => {
@@ -95,6 +106,14 @@ export class VideoCallComponent implements OnInit {
       .then((stream) => {
         this.lazyStream = stream;
 
+        this.conn = this.peer.connect(id);
+        this.conn.on("data", (message) =>
+          this.messages.push({
+            message: message,
+            type: "receive",
+          })
+        );
+
         const call = this.peer.call(id, stream);
         call.on("stream", (remoteStream) => {
           if (!this.peerList.includes(call.peer)) {
@@ -111,5 +130,14 @@ export class VideoCallComponent implements OnInit {
 
   connectWithPeer() {
     this.callPeer(this.peerIdShare);
+  }
+
+  sendMessage() {
+    this.conn.send(this.message);
+    this.messages.push({
+      message: this.message,
+      type: "send",
+    });
+    this.message = "";
   }
 }
