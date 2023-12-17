@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from "@angular/core";
-import { Peer } from "peerjs";
+import { Peer, PeerJSOption } from "peerjs";
+import { v4 as uuidv4 } from "uuid";
 
 @Component({
   selector: "app-video-call",
@@ -9,7 +10,7 @@ import { Peer } from "peerjs";
 export class VideoCallComponent implements OnInit {
   peerId: any;
   peerIdShare: any;
-  private peer: Peer = new Peer();
+  private peer!: Peer;
   lazyStream: any;
   currentPeer: any;
   peerList: any[] = [];
@@ -24,9 +25,31 @@ export class VideoCallComponent implements OnInit {
 
   private getPeerId = () => {
     //Generate unique Peer Id for establishing connection
-    this.peer.on("open", (id) => {
-      this.peerId = id;
-    });
+    if (!this.peer || this.peer.disconnected) {
+      const peerJsOptions: PeerJSOption = {
+        debug: 3,
+        config: {
+          iceServers: [
+            {
+              urls: [
+                "stun:stun1.l.google.com:19302",
+                "stun:stun2.l.google.com:19302",
+              ],
+            },
+          ],
+        },
+      };
+      try {
+        let id = uuidv4();
+        this.peer = new Peer(id, peerJsOptions);
+        this.peerId = id;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    // this.peer.on("open", (id) => {
+    //   this.peerId = id;
+    // });
 
     // Peer event to accept incoming calls
     this.peer.on("call", (call) => {
